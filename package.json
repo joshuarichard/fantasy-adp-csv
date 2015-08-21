@@ -1,0 +1,18 @@
+{
+  "name": "fantasy-adp-csv",
+  "version": "0.0.1",
+  "description": "an espn fantasy football adp table crawler that exports to csv",
+  "main": "app.js",
+  "author": "joshua richard",
+  "license": "ISC",
+  "dependencies": {
+    "csv-write-stream": "^1.0.0",
+    "jquery": "^2.1.4",
+    "jsdom": "3.0.0"
+  },
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-contrib-jshint": "^0.11.2",
+    "grunt-contrib-watch": "^0.6.1",
+   }
+}
