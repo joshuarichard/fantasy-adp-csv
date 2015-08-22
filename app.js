@@ -2,10 +2,23 @@ var $ = require('jquery')(require('jsdom').jsdom().parentWindow);
 var http = require('http');
 var fs = require('fs');
 var csv = require('csv-write-stream')
+
+/**
+ * dev function for logging to console the contents of resData
+ */
+function logData(data) {
+    data.forEach(function (currentValue, index) {
+        console.log(data[index] + ':' + currentValue);
+    });
+}
  
 function toCSV(resHeaders, resData) {
-    var csvString = resHeaders.toString() + ',' + resData.toString();
-    console.log(csvString);
+    var csvData = resHeaders.toString() + ',' + resData.toString();
+    var csvPath = "position_all.csv";
+    fs.writeFile(csvPath, csvData, function(err) {
+        if (err) throw err;
+        console.log('successfully saved file ' + csvPath);
+    }); 
 }
 
 function scrapeTableHeaders(html) {
@@ -13,6 +26,16 @@ function scrapeTableHeaders(html) {
     $(html).find('.tableSubHead:last td').each(function () {
         resHeaders[resHeaders.length] = $(this).text();
     });
+
+    /**
+     * send resData toString() and then parse it back into array
+     * to separate Player, Team entry
+     *
+     * I already know this entry will be ' TEAM' so I'm basically a liar
+     */
+    resHeaders = resHeaders.toString().split(',');
+    resHeaders[2] = 'TEAM';
+
     return resHeaders;
 }
 
@@ -45,30 +68,19 @@ function scrapeTableData(html) {
      * entry that I want to delete a space from. Kind of lucky
      * how it worked out the way it did. Pretty easy
      */
-    for(var i = 2; i < 1783; i += 9) {
-        console.log('before:' + resData[i] + '(i = ' + i + ')');
-        if(resData[i] === 'D/ST') {
-            i += 8;
-            continue;
-        }
-
-        var team = resData[i].toString().split('');
+    resData.forEach(function (currentValue, index) {
+        var singleEntry = resData[index].toString().split('');
         var tmp = '';
-        team.forEach(function (currentValue, index) {
-            if(currentValue === ' ') {
-                team.splice(index, 1);
+        singleEntry.forEach(function (currentValue, index) {
+            if(singleEntry[0] === ' ') {
+                singleEntry.splice(index, 1);
             }
-            tmp += team[index].toString();
+            tmp += singleEntry[index].toString();     
         });
-        console.log('after:' + tmp + '(i = ' + i + ')');
-        resData[i] = tmp;
-    }
-
-    resData.forEach(function(currentValue, index) {
-        //console.log(resData[index]);
+        resData[index] = tmp;
     });
     
-    return '';
+    return resData;
 }
 
 var html = '';
@@ -77,12 +89,9 @@ http.get('http://games.espn.go.com/ffl/livedraftresults?position=ALL', function(
         html += data; 
     }).on('end', function () {
 
-        console.log('starting.');
+        console.log('starting fantasy-adp-csv.');
         var resHeaders = scrapeTableHeaders(html);
-        console.log(resHeaders);
-        console.log(resData);
         var resData = scrapeTableData(html);
-        //toCSV(resHeaders, resData);
-        console.log('completed.');
+        toCSV(resHeaders, resData);
     });
 });
