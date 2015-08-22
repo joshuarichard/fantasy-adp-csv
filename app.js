@@ -12,6 +12,12 @@ function logData(data) {
     });
 }
  
+/**
+ * doesn't currently use csv-write-stream. probably need to use it
+ * to make it easier to write out each individual record, right now
+ * it has no line breaks so if you open it up in a csv viewer you'll
+ * see one massive record with 1783 columns. which sucks.
+ */
 function toCSV(resHeaders, resData) {
     var csvData = resHeaders.toString() + ',' + resData.toString();
     var csvPath = "position_all.csv";
