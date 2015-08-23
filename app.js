@@ -4,47 +4,18 @@ var fs = require('fs');
 var csv = require('csv-write-stream')
 var os = require('os');
 
-/**
- * dev function for logging to console the contents of data
- */
-function logData(data) {
-    data.forEach(function (currentValue, index) {
-        console.log(index + ':' + currentValue);
-    });
-}
+var html = '';
+http.get('http://games.espn.go.com/ffl/livedraftresults?position=ALL', function(res) {
+    res.on('data', function(data) { 
+        html += data; 
+    }).on('end', function () {
 
-/**
- * check to see if a number is the first entry in a record.
- * kind of a botched check, needs to be an int that doesn't 
- * have '+', '.', and '-' in it.
- */
-function isFirstEntry(n) {
-    if (Number(n) % 1 === 0 && 
-        n.charCodeAt(1) != 46 &&
-        n.charCodeAt(2) != 46 && // need to make these three checks
-        n.charCodeAt(3) != 46 && // because n.indexOf('.') won't work
-        n.indexOf('+') && 
-        n.indexOf('-')) {
-        console.log(n.charCodeAt(3));
-        return 1;
-    }
-}
-/**
- * doesn't currently use csv-write-stream. probably need to use it
- * to make it easier to write out each individual record, right now
- * it has no line breaks so if you open it up in a csv viewer you'll
- * see one massive record with 1783 columns. which sucks.
- */
-function toCSV(headers, data) {
-    var csvData = headers.toString() + ',' + data.toString();
-    var csvPath = 'position_all.csv';
-
-    fs.writeFile(csvPath, csvData, function (err) {
-        if (err) throw err;
+        console.log('starting fantasy-adp-csv.');
+        var headers = scrapeTableHeaders(html);
+        var data = scrapeTableData(html);
+        toCSV(headers, data);
     });
-    
-    console.log('successfully saved to ' + csvPath);
-}
+});
 
 function scrapeTableHeaders(html) {
     var headers = [];
@@ -78,7 +49,7 @@ function scrapeTableData(html) {
     });
 
     /**
-     * now clean them puppies up
+     * now clean them puppies up (get rid of last '' entry)
      */
     data.forEach(function (currentValue, index) {
         if(currentValue === '') {
@@ -121,15 +92,52 @@ function scrapeTableData(html) {
     return data;
 }
 
-var html = '';
-http.get('http://games.espn.go.com/ffl/livedraftresults?position=ALL', function(res) {
-    res.on('data', function(data) { 
-        html += data; 
-    }).on('end', function () {
+/**
+ * check to see if a number is the first entry in a record.
+ * kind of a botched check, needs to be an int that doesn't 
+ * have '+', '.', and '-' in it.
+ */
+function isFirstEntry(n) {
+    if (Number(n) % 1 === 0 && 
+        n.charCodeAt(1) != 46 &&
+        n.charCodeAt(2) != 46 && // need to make these three checks
+        n.charCodeAt(3) != 46 && // because n.indexOf('.') won't work
+        n.indexOf('+') && 
+        n.indexOf('-')) {
+        return 1;
+    }
+}
 
-        console.log('starting fantasy-adp-csv.');
-        var headers = scrapeTableHeaders(html);
-        var data = scrapeTableData(html);
-        toCSV(headers, data);
+/**
+ * doesn't currently use csv-write-stream. probably need to use it
+ * to make it easier to write out each individual record, right now
+ * it has no line breaks so if you open it up in a csv viewer you'll
+ * see one massive record with 1783 columns. which sucks.
+ */
+function toCSV(headers, data) {
+    var csvData = headers.toString() + ',' + data.toString();
+    var csvPath = 'position_all.csv';
+
+    /**
+     * to solve ',,' problem, go through csvData and splice all 
+     * instances of ',,'
+     *
+     * doesn't work, should probably fix, you know...
+     */
+    csvData = csvData.toString().replace(',,', '');
+
+    fs.writeFile(csvPath, csvData, function (err) {
+        if (err) throw err;
     });
-});
+    
+    console.log('successfully saved to ' + csvPath);
+}
+
+/**
+ * dev function for logging to console the contents of data
+ */
+function logData(data) {
+    data.forEach(function (currentValue, index) {
+        console.log(index + ':' + currentValue);
+    });
+}
