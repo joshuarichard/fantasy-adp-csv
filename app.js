@@ -2,80 +2,104 @@ var $ = require('jquery')(require('jsdom').jsdom().parentWindow);
 var http = require('http');
 var fs = require('fs');
 var csv = require('csv-write-stream')
+var os = require('os');
 
 /**
- * dev function for logging to console the contents of resData
+ * dev function for logging to console the contents of data
  */
 function logData(data) {
     data.forEach(function (currentValue, index) {
-        console.log(data[index] + ':' + currentValue);
+        console.log(index + ':' + currentValue);
     });
 }
- 
+
+/**
+ * check to see if a number is the first entry in a record.
+ * kind of a botched check, needs to be an int that doesn't 
+ * have '+', '.', and '-' in it.
+ */
+function isFirstEntry(n) {
+    if (Number(n) % 1 === 0 && 
+        n.charCodeAt(1) != 46 &&
+        n.charCodeAt(2) != 46 && // need to make these three checks
+        n.charCodeAt(3) != 46 && // because n.indexOf('.') won't work
+        n.indexOf('+') && 
+        n.indexOf('-')) {
+        console.log(n.charCodeAt(3));
+        return 1;
+    }
+}
 /**
  * doesn't currently use csv-write-stream. probably need to use it
  * to make it easier to write out each individual record, right now
  * it has no line breaks so if you open it up in a csv viewer you'll
  * see one massive record with 1783 columns. which sucks.
  */
-function toCSV(resHeaders, resData) {
-    var csvData = resHeaders.toString() + ',' + resData.toString();
-    var csvPath = "position_all.csv";
-    fs.writeFile(csvPath, csvData, function(err) {
+function toCSV(headers, data) {
+    var csvData = headers.toString() + ',' + data.toString();
+    var csvPath = 'position_all.csv';
+
+    fs.writeFile(csvPath, csvData, function (err) {
         if (err) throw err;
-        console.log('successfully saved file ' + csvPath);
-    }); 
+    });
+    
+    console.log('successfully saved to ' + csvPath);
 }
 
 function scrapeTableHeaders(html) {
-    var resHeaders = [];
+    var headers = [];
     $(html).find('.tableSubHead:last td').each(function () {
-        resHeaders[resHeaders.length] = $(this).text();
+        headers[headers.length] = $(this).text();
     });
 
     /**
-     * send resData toString() and then parse it back into array
-     * to separate Player, Team entry
-     *
-     * I already know this entry will be ' TEAM' so I'm basically a liar
+     * send data toString() and then parse it back into array
+     * to separate Player, Team entry. also, I already know this 
+     * entry will be ' TEAM' so I'm basically a liar.
      */
-    resHeaders = resHeaders.toString().split(',');
-    resHeaders[2] = 'TEAM';
+    headers = headers.toString().split(',');
+    headers[2] = 'TEAM';
 
-    return resHeaders;
+    return headers;
 }
 
 function scrapeTableData(html) {
-    resData = [];
+    data = [];
     $(html).find('table .tableBody:first td').each(function () {
         if(!$(this).parent('tr').hasClass('tableSubHead') &&
            !$(this).parent('tr').hasClass('tableHead')) {
-            resData[resData.length] = $(this).text();
+            if (isFirstEntry($(this).text())) {
+                data.push('\n');
+            }
+            data.push($(this).text());
+            console.log($(this).text());
+            console.log('-------------');
         }
     });
 
     /**
      * now clean them puppies up
      */
-    resData.forEach(function (currentValue, index) {
+    data.forEach(function (currentValue, index) {
         if(currentValue === '') {
-            resData.splice(index, 1);
+            data.splice(index, 1);
         }
     });
 
     /**
-     * send resData toString() and then parse it back into array
+     * send data toString() and then parse it back into array
      * to separate Player, Team entry
      */
-    resData = resData.toString().split(',');
+    data = data.toString().split(',');
 
     /**
-     * Starting at resData[10] every row has a Player, Team
-     * entry that I want to delete a space from. Kind of lucky
-     * how it worked out the way it did. Pretty easy
+     * every team entry has a space that should be deleted.
+     *
+     * before: ' NE'
+     * after: 'NE'
      */
-    resData.forEach(function (currentValue, index) {
-        var singleEntry = resData[index].toString().split('');
+    data.forEach(function (currentValue, index) {
+        var singleEntry = data[index].toString().split('');
         var tmp = '';
         singleEntry.forEach(function (currentValue, index) {
             if(singleEntry[0] === ' ') {
@@ -83,10 +107,18 @@ function scrapeTableData(html) {
             }
             tmp += singleEntry[index].toString();     
         });
-        resData[index] = tmp;
+        data[index] = tmp;
     });
     
-    return resData;
+    /*
+    data.forEach(function (currentValue, index) {
+        if(isFirstEntry(currentValue)) {
+            console.log('would have found this entry ' + currentValue + ' at index ' + index + ' - typeof: ' + typeof(currentValue));
+        }
+    });
+    */
+
+    return data;
 }
 
 var html = '';
@@ -96,8 +128,8 @@ http.get('http://games.espn.go.com/ffl/livedraftresults?position=ALL', function(
     }).on('end', function () {
 
         console.log('starting fantasy-adp-csv.');
-        var resHeaders = scrapeTableHeaders(html);
-        var resData = scrapeTableData(html);
-        toCSV(resHeaders, resData);
+        var headers = scrapeTableHeaders(html);
+        var data = scrapeTableData(html);
+        toCSV(headers, data);
     });
 });
