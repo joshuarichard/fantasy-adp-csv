@@ -6,13 +6,13 @@
   "author": "joshua richard",
   "license": "ISC",
   "dependencies": {
-    "csv-write-stream": "^1.0.0",
     "jquery": "^2.1.4",
-    "jsdom": "3.0.0"
+    "jsdom": "3.0.0",
+    "nconf": "^0.7.2"
   },
   "devDependencies": {
     "grunt": "^0.4.5",
     "grunt-contrib-jshint": "^0.11.2",
-    "grunt-contrib-watch": "^0.6.1",
-   }
+    "grunt-contrib-watch": "^0.6.1"
+  }
 }

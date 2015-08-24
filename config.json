@@ -1,0 +1,11 @@
+{
+	"tables" : {
+        "all": "http://games.espn.go.com/ffl/livedraftresults?position=ALL",
+        "qb": "http://games.espn.go.com/ffl/livedraftresults?position=QB",
+        "rb": "http://games.espn.go.com/ffl/livedraftresults?position=RB",
+        "wr": "http://games.espn.go.com/ffl/livedraftresults?position=WR",
+        "te": "http://games.espn.go.com/ffl/livedraftresults?position=TE",
+        "d/st": "http://games.espn.go.com/ffl/livedraftresults?position=D/ST",
+        "k": "http://games.espn.go.com/ffl/livedraftresults?position=K"
+    }
+}
