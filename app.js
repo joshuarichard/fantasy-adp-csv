@@ -1,22 +1,48 @@
 var $ = require('jquery')(require('jsdom').jsdom().parentWindow);
 var http = require('http');
 var fs = require('fs');
-var csv = require('csv-write-stream')
 var os = require('os');
+var nconf = require('nconf');
 
-var html = '';
-http.get('http://games.espn.go.com/ffl/livedraftresults?position=ALL', function(res) {
-    res.on('data', function(data) { 
-        html += data; 
-    }).on('end', function () {
+/**
+ * setup config file
+ */
+nconf.file({file: './config.json'});
+var tables = nconf.get('tables');
+for (var key in tables) {
+    if (tables.hasOwnProperty(key)) {
+        getTable(key, tables[key]);
+    }
+}
 
-        console.log('starting fantasy-adp-csv.');
-        var headers = scrapeTableHeaders(html);
-        var data = scrapeTableData(html);
-        toCSV(headers, data);
+/**
+ * get table based on url found in config file
+ *
+ * args:
+ * pos - position table that's being drawn from
+ * url - url for the table to pull from
+ */
+function getTable(pos, url) {
+    var html = '';
+    http.get(url, function(res) {
+        res.on('data', function(data) { 
+            html += data; 
+        }).on('end', function () {
+            console.log('getting table ' + pos + '...');
+            var headers = scrapeTableHeaders(html);
+            var data = scrapeTableData(html);
+            var csvPath = toCSV(pos, headers, data);
+            console.log('successfully saved data to ' + csvPath);
+        });
     });
-});
+}
 
+/**
+ * pull table headers from the top
+ *
+ * args:
+ * html - raw html from http get request
+ */
 function scrapeTableHeaders(html) {
     var headers = [];
     $(html).find('.tableSubHead:last td').each(function () {
@@ -34,6 +60,12 @@ function scrapeTableHeaders(html) {
     return headers;
 }
 
+/**
+ * pull table data
+ *
+ * args:
+ * html - raw html from http get request
+ */
 function scrapeTableData(html) {
     data = [];
     $(html).find('table .tableBody:first td').each(function () {
@@ -43,8 +75,6 @@ function scrapeTableData(html) {
                 data.push('\n');
             }
             data.push($(this).text());
-            console.log($(this).text());
-            console.log('-------------');
         }
     });
 
@@ -59,7 +89,7 @@ function scrapeTableData(html) {
 
     /**
      * send data toString() and then parse it back into array
-     * to separate Player, Team entry
+     * by split(',') to separate Player, Team entry
      */
     data = data.toString().split(',');
 
@@ -80,14 +110,6 @@ function scrapeTableData(html) {
         });
         data[index] = tmp;
     });
-    
-    /*
-    data.forEach(function (currentValue, index) {
-        if(isFirstEntry(currentValue)) {
-            console.log('would have found this entry ' + currentValue + ' at index ' + index + ' - typeof: ' + typeof(currentValue));
-        }
-    });
-    */
 
     return data;
 }
@@ -96,15 +118,18 @@ function scrapeTableData(html) {
  * check to see if a number is the first entry in a record.
  * kind of a botched check, needs to be an int that doesn't 
  * have '+', '.', and '-' in it.
+ *
+ * args:
+ * entry - the entry to check
  */
-function isFirstEntry(n) {
-    if (Number(n) % 1 === 0 && 
-        n.charCodeAt(1) != 46 &&
-        n.charCodeAt(2) != 46 && // need to make these three checks
-        n.charCodeAt(3) != 46 && // because n.indexOf('.') won't work
-        n.indexOf('+') && 
-        n.indexOf('-')) {
-        return 1;
+function isFirstEntry(entry) {
+    if (Number(entry) % 1 === 0 && 
+        entry.charCodeAt(1) != 46 &&
+        entry.charCodeAt(2) != 46 && // need to make these three checks
+        entry.charCodeAt(3) != 46 && // because n.indexOf('.') won't work
+        entry.indexOf('+') && 
+        entry.indexOf('-')) {
+        return true;
     }
 }
 
@@ -113,10 +138,18 @@ function isFirstEntry(n) {
  * to make it easier to write out each individual record, right now
  * it has no line breaks so if you open it up in a csv viewer you'll
  * see one massive record with 1783 columns. which sucks.
+ *
+ * args:
+ * pos - position table that's been drawn from
+ * headers - headers from the table
+ * data - data from the table
  */
-function toCSV(headers, data) {
+function toCSV(pos, headers, data) {
     var csvData = headers.toString() + ',' + data.toString();
-    var csvPath = 'position_all.csv';
+    if(pos === 'd/st') {
+        pos = 'd-st';
+    }
+    var csvPath = 'position_' + pos + '.csv';
 
     /**
      * to solve ',,' problem, go through csvData and splice all 
@@ -129,12 +162,15 @@ function toCSV(headers, data) {
     fs.writeFile(csvPath, csvData, function (err) {
         if (err) throw err;
     });
-    
-    console.log('successfully saved to ' + csvPath);
+
+    return csvPath;
 }
 
 /**
  * dev function for logging to console the contents of data
+ *
+ * args:
+ * data - data to log (headers or data)
  */
 function logData(data) {
     data.forEach(function (currentValue, index) {
