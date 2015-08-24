@@ -7,13 +7,16 @@ var nconf = require('nconf');
 /**
  * setup config file
  */
-nconf.file({file: './config.json'});
+nconf.file( {file: './config.json'} );
 var tables = nconf.get('tables');
 for (var key in tables) {
     if (tables.hasOwnProperty(key)) {
         getTable(key, tables[key]);
     }
 }
+
+console.log('spinning up fantasy-adp-csv...');
+console.log('note that table gets and csv write and moves are asynchronous.');
 
 /**
  * get table based on url found in config file
@@ -72,9 +75,10 @@ function scrapeTableData(html) {
         if(!$(this).parent('tr').hasClass('tableSubHead') &&
            !$(this).parent('tr').hasClass('tableHead')) {
             if (isFirstEntry($(this).text())) {
-                data.push('\n');
+                data.push('\n' + $(this).text());
+            } else {
+                data.push($(this).text()); 
             }
-            data.push($(this).text());
         }
     });
 
@@ -150,14 +154,6 @@ function toCSV(pos, headers, data) {
         pos = 'd-st';
     }
     var csvPath = 'position_' + pos + '.csv';
-
-    /**
-     * to solve ',,' problem, go through csvData and splice all 
-     * instances of ',,'
-     *
-     * doesn't work, should probably fix, you know...
-     */
-    csvData = csvData.toString().replace(',,', '');
 
     fs.writeFile(csvPath, csvData, function (err) {
         if (err) throw err;
