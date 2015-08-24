@@ -161,6 +161,11 @@ function toCSV(pos, headers, data) {
 
     fs.writeFile(csvPath, csvData, function (err) {
         if (err) throw err;
+        var newPath = 'csv/' + csvPath;
+        fs.rename(csvPath, newPath, function(err) {
+            if (err) throw err;
+            console.log('moved ' + csvPath + ' to ' + newPath);
+        });
     });
 
     return csvPath;
